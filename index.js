@@ -15,6 +15,10 @@ if (containerPort == null) {
 }
 const hostPort = Number(process.argv[4] || 4000);
 
+const sidecarImage =
+  process.env.DOCKER_PORT_FORWARD_SIDECAR_IMAGE ||
+  "ghcr.io/jtdevops/docker-port-forward/sidecar";
+
 const docker = new Docker();
 
 function pull(repoTag) {
@@ -32,7 +36,7 @@ function pull(repoTag) {
 (async () => {
   try {
     console.log(color.yellow(`📥 Pulling sidecar image...`));
-    await pull("ghcr.io/iammathew/docker-port-forward/sidecar:latest");
+    await pull(sidecarImage);
     const network = await docker.createNetwork({ Name: "port-forward-net" });
     const target = docker.getContainer(containerId);
     console.log(color.yellow(`🔌 Connecting to ${target.id}...`));
@@ -43,7 +47,7 @@ function pull(repoTag) {
       "port-forward-net"
     ].IPAddress;
     const container = await docker.createContainer({
-      Image: "ghcr.io/iammathew/docker-port-forward/sidecar:latest",
+      Image: sidecarImage,
     });
     await container.start();
     await network.connect({

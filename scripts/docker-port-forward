@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -e
+
+IMAGE="jtdev0ps/docker-port-forward"
+
+USE_NET_HOST=0
+CONTAINER=""
+CONTAINER_PORT=""
+HOST_PORT="4000"
+
+# Optional first arg: --net-host or -n
+if [[ "$1" == "--net-host" || "$1" == "-n" ]]; then
+  USE_NET_HOST=1
+  shift
+fi
+
+if [[ $# -lt 2 ]]; then
+  echo "Usage: docker-port-forward [--net-host|-n] <container> <containerport> [hostport]" >&2
+  echo "  --net-host, -n  Use host network (no port mapping)" >&2
+  echo "  hostport defaults to 4000" >&2
+  exit 1
+fi
+
+CONTAINER="$1"
+CONTAINER_PORT="$2"
+HOST_PORT="${3:-4000}"
+
+# Pull image if missing
+docker image inspect "$IMAGE" >/dev/null 2>&1 || docker pull "$IMAGE"
+
+DOCKER_ARGS=(
+  docker run
+  --rm
+  -t
+  -v /var/run/docker.sock:/var/run/docker.sock
+)
+
+if [[ "$USE_NET_HOST" -eq 1 ]]; then
+  DOCKER_ARGS+=(--net host)
+else
+  DOCKER_ARGS+=(-p "${HOST_PORT}:${HOST_PORT}")
+fi
+
+DOCKER_ARGS+=("$IMAGE" "$CONTAINER" "$CONTAINER_PORT" "$HOST_PORT")
+
+echo "> ${DOCKER_ARGS[*]}"
+exec "${DOCKER_ARGS[@]}"
